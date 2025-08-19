@@ -9,6 +9,7 @@ import numpy as np
 from tensorflow.python.framework.errors_impl import NotFoundError
 import keras
 import math
+import shutil
 
 pnet_sess = ort.InferenceSession("./pnet.onnx")
 rnet_sess = ort.InferenceSession("./rnet.onnx")
@@ -18,6 +19,19 @@ onet_sess = ort.InferenceSession("./onet.onnx")
 model = keras.models.load_model("./blinknet_models/blink_model_trained.h5")
 
 blink_count = 0
+
+def clear_directory(directory_path):
+    if not os.path.exists(directory_path):
+        return
+    for filename in os.listdir(directory_path):
+        file_path = os.path.join(directory_path, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.remove(file_path)  # remove file or symlink
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)  # remove directory and contents
+        except Exception as e:
+            print(f"Failed to delete {file_path}. Reason: {e}")
 
 
 def parse_landmarks(landmarks):
@@ -178,7 +192,7 @@ def preprocess(image):
         raise ValueError("Input image is empty or None in preprocess()")
     img = cv2.resize(image, (30, 30))  # Ensure correct size
     #img = img.astype('float32') / 255.0  # Normalize to [0,1]
-    img = np.expand_dims(img, axis=0)  # Add batch dimension -> (1, 30, 30, 3)
+    # img = np.expand_dims(img, axis=0)  # Add batch dimension -> (1, 30, 30, 3)
     return img
 
 
@@ -814,17 +828,17 @@ def predict_blink(left_eye, right_eye):
         # Eye open
         return 0
 
-# Load face detector and dlib's shape predictor
-face_detector = dlib.get_frontal_face_detector()
-shape_predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
+
+target_dir = "blinknet_data"
+data_type = "train"
 
 # Load trained CNN model
-model = load_model('blink_model_trained.h5')
+model = load_model('blinknet_models/blink_model_trained.h5')
 
 # Directories
 data_dirs = {
-    'closed': 'blinknet_test_data/closed',
-    'open': 'blinknet_test_data/open'
+    'closed': f"raw_{target_dir}/{data_type}/closed",
+    'open': f'raw_{target_dir}/{data_type}/open'
 }
 
 # Counters
@@ -836,6 +850,8 @@ class_correct = {"closed": 0, "open": 0}
 
 
 threshold = [0.2, 0.5, 0.7]
+
+clear_directory(f"{target_dir}/{data_type}")
 
 for label, dir_path in data_dirs.items():
     for filename in os.listdir(dir_path):
@@ -869,32 +885,19 @@ for label, dir_path in data_dirs.items():
         right_eye_bottom_x = result[0][0]['keypoints']['right_eye'][0] + 30
         right_eye_bottom_y = result[0][0]['keypoints']['right_eye'][1] + 30
         
-        predicted_class = predict_blink(
-            frame[int(left_eye_top_y):int(left_eye_bottom_y), int(left_eye_top_x):int(left_eye_bottom_x)],
-            frame[int(right_eye_top_y):int(right_eye_bottom_y), int(right_eye_top_x):int(right_eye_bottom_x)]
-        )
+        # Save the frame as an image with a specific path
+        name_only = os.path.splitext(filename)[0]
         
-        if predicted_class == -1:
-            print(filename)
-            continue
+        preprocessed_left_eye = preprocess(frame[int(left_eye_top_y):int(left_eye_bottom_y), int(left_eye_top_x):int(left_eye_bottom_x)])
+        preprocessed_right_eye = preprocess(frame[int(right_eye_top_y):int(right_eye_bottom_y), int(right_eye_top_x):int(right_eye_bottom_x)])
         
-        predicted_label = 'closed' if predicted_class == 1 else 'open'
-        print(label, "->", predicted_label)
+        left_output_path = f"{target_dir}/{data_type}/{label}/{name_only}_left.jpg"
+        os.makedirs(os.path.dirname(left_output_path), exist_ok=True)
+        cv2.imwrite(left_output_path, preprocessed_left_eye)
         
-        total += 1
-        class_totals[label] += 1
-        if predicted_label == label:
-            correct += 1
-            class_correct[label] += 1
-
-accuracy = (correct / total) * 100 if total > 0 else 0
-print(f"Total samples: {total}")
-print(f"Correct predictions: {correct}")
-print(f"Overall Accuracy: {accuracy:.2f}%")
-
-for cls in ["closed", "open"]:
-    if class_totals[cls] > 0:
-        acc = (class_correct[cls] / class_totals[cls]) * 100
-    else:
-        acc = 0
-    print(f"Class '{cls}': {class_correct[cls]}/{class_totals[cls]} correct ({acc:.2f}% accuracy)")
+        right_output_path = f"{target_dir}/{data_type}/{label}/{name_only}_right.jpg"
+        os.makedirs(os.path.dirname(right_output_path), exist_ok=True)
+        cv2.imwrite(right_output_path, preprocessed_right_eye)
+        
+        print("Saved", left_output_path)
+        print("Saved", right_output_path)

@@ -9,28 +9,17 @@ import numpy as np
 from tensorflow.python.framework.errors_impl import NotFoundError
 import keras
 import math
-import shutil
 
 pnet_sess = ort.InferenceSession("./pnet.onnx")
 rnet_sess = ort.InferenceSession("./rnet.onnx")
 onet_sess = ort.InferenceSession("./onet.onnx")
 
 
-model = keras.models.load_model("./blinknet_models/blink_model_trained.h5")
+model = keras.models.load_model("./blinknet_models/blink_model_trained_1.h5")
 
 blink_count = 0
 
-def clear_directory(directory_path):
-    for filename in os.listdir(directory_path):
-        file_path = os.path.join(directory_path, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.remove(file_path)  # remove file or symlink
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)  # remove directory and contents
-        except Exception as e:
-            print(f"Failed to delete {file_path}. Reason: {e}")
-
+#region Functions
 
 def parse_landmarks(landmarks):
     """
@@ -826,17 +815,12 @@ def predict_blink(left_eye, right_eye):
         # Eye open
         return 0
 
-# Load face detector and dlib's shape predictor
-face_detector = dlib.get_frontal_face_detector()
-shape_predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
-
-# Load trained CNN model
-model = load_model('blinknet_models/blink_model_trained.h5')
+#endregion
 
 # Directories
 data_dirs = {
-    'closed': 'raw_blinknet_test_data/closed',
-    'open': 'raw_blinknet_test_data/open'
+    'closed': 'raw_blinknet_data/val/closed',
+    'open': 'raw_blinknet_data/val/open'
 }
 
 # Counters
@@ -848,8 +832,6 @@ class_correct = {"closed": 0, "open": 0}
 
 
 threshold = [0.2, 0.5, 0.7]
-
-clear_directory("blinknet_test_data")
 
 for label, dir_path in data_dirs.items():
     for filename in os.listdir(dir_path):
@@ -883,15 +865,32 @@ for label, dir_path in data_dirs.items():
         right_eye_bottom_x = result[0][0]['keypoints']['right_eye'][0] + 30
         right_eye_bottom_y = result[0][0]['keypoints']['right_eye'][1] + 30
         
-        # Save the frame as an image with a specific path
-        name_only = os.path.splitext(filename)[0]
+        predicted_class = predict_blink(
+            frame[int(left_eye_top_y):int(left_eye_bottom_y), int(left_eye_top_x):int(left_eye_bottom_x)],
+            frame[int(right_eye_top_y):int(right_eye_bottom_y), int(right_eye_top_x):int(right_eye_bottom_x)]
+        )
         
-        left_output_path = f"blinknet_test_data/{label}/{name_only}_left.jpg"
-        os.makedirs(os.path.dirname(left_output_path), exist_ok=True)
-        cv2.imwrite(left_output_path, frame[int(left_eye_top_y):int(left_eye_bottom_y), int(left_eye_top_x):int(left_eye_bottom_x)])
+        if predicted_class == -1:
+            print(filename)
+            continue
         
-        right_output_path = f"blinknet_test_data/{label}/{name_only}_right.jpg"
-        os.makedirs(os.path.dirname(right_output_path), exist_ok=True)
-        cv2.imwrite(right_output_path, frame[int(right_eye_top_y):int(right_eye_bottom_y), int(right_eye_top_x):int(right_eye_bottom_x)])
+        predicted_label = 'closed' if predicted_class == 1 else 'open'
+        print(label, "->", predicted_label)
         
-        print("Saved", left_output_path, "and", right_output_path)
+        total += 1
+        class_totals[label] += 1
+        if predicted_label == label:
+            correct += 1
+            class_correct[label] += 1
+
+accuracy = (correct / total) * 100 if total > 0 else 0
+print(f"Total samples: {total}")
+print(f"Correct predictions: {correct}")
+print(f"Overall Accuracy: {accuracy:.2f}%")
+
+for cls in ["closed", "open"]:
+    if class_totals[cls] > 0:
+        acc = (class_correct[cls] / class_totals[cls]) * 100
+    else:
+        acc = 0
+    print(f"Class '{cls}': {class_correct[cls]}/{class_totals[cls]} correct ({acc:.2f}% accuracy)")
