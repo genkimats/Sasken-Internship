@@ -21,9 +21,9 @@ rnet_sess = ort.InferenceSession("./rnet.onnx")
 onet_sess = ort.InferenceSession("./onet.onnx")
 
 
-model = keras.models.load_model("./blink_model_trained.h5")
+model = keras.models.load_model("./blinknet_models/blink_model_trained.h5")
 
-yawn_model = keras.models.load_model("./yawn_model_trained.h5")
+yawn_model = keras.models.load_model("./yawnnet_models/yawn_model_trained.h5")
 
 blink_count = 0
 

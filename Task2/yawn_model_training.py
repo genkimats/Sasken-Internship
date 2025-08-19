@@ -11,12 +11,14 @@ import numpy as np
 
 #train_dir = './blinknet_data_set/dataset/'  # path where blink and non_blink folders are
 
+trial_num = 1
+
 train_datagen = ImageDataGenerator()
 
 val_datagen = ImageDataGenerator()
 
 train_generator = train_datagen.flow_from_directory(
-    './yawnnet_train_data/Mouth_Dataset/train/',
+    './yawnnet_train_data/train/',
     target_size=(30, 30),
     batch_size=32,
     subset='training',
@@ -25,7 +27,7 @@ train_generator = train_datagen.flow_from_directory(
 )
 
 val_generator = val_datagen.flow_from_directory(
-    './yawnnet_train_data/Mouth_Dataset/val/',
+    './yawnnet_train_data/val/',
     target_size=(30, 30),
     batch_size=32,
     subset='validation',
@@ -38,7 +40,7 @@ val_generator = val_datagen.flow_from_directory(
 # ======================
 
 
-model = load_model("./yawnnet_model.h5")  # or "saved_model/"
+model = load_model("./yawnnet_models/yawnnet_model_trained.h5")  # or "saved_model/"
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
 model.summary()
@@ -53,5 +55,5 @@ history = model.fit(
 # Save Model
 # ======================
 
-model.save("yawn_model_trained.h5")
+model.save(f"yawnnet_models/yawn_model_trained{trial_num}.h5")
 
