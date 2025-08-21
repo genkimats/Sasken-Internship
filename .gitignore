@@ -4,3 +4,7 @@ Task2/blinknet_data/
 Task2/yawnnet_data/
 Task2/raw_blinknet_data/
 Task2/raw_yawnnet_data/
+Task2/blink_dataset
+Task2/raw_blink_dataset
+*.index
+checkpoint*

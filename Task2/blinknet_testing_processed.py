@@ -9,13 +9,16 @@ import numpy as np
 from tensorflow.python.framework.errors_impl import NotFoundError
 import keras
 import math
+import keras_tuner as kt
 
 pnet_sess = ort.InferenceSession("./pnet.onnx")
 rnet_sess = ort.InferenceSession("./rnet.onnx")
 onet_sess = ort.InferenceSession("./onet.onnx")
 
+trial_num = 4
 
-model = keras.models.load_model("./blinknet_models/blink_model_trained_1.h5")
+# model = keras.models.load_model(f"./blinknet_models/blink_model_trained_{trial_num}.h5")
+model = keras.models.load_model(f"./blinknet_models/blink_model_finetuned_5.h5")
 
 blink_count = 0
 

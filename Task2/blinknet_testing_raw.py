@@ -15,7 +15,7 @@ rnet_sess = ort.InferenceSession("./rnet.onnx")
 onet_sess = ort.InferenceSession("./onet.onnx")
 
 
-model = keras.models.load_model("./blinknet_models/blink_model_trained_1.h5")
+model = keras.models.load_model("./blinknet_models/blink_model_trained_2.h5")
 
 blink_count = 0
 
