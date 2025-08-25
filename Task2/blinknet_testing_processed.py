@@ -17,8 +17,9 @@ onet_sess = ort.InferenceSession("./onet.onnx")
 
 trial_num = 4
 
+model = keras.models.load_model(f"./blinknet_models/blink_model_trained.h5")
 # model = keras.models.load_model(f"./blinknet_models/blink_model_trained_{trial_num}.h5")
-model = keras.models.load_model(f"./blinknet_models/blink_model_finetuned_5.h5")
+# model = keras.models.load_model(f"./blinknet_models/blink_model_finetuned_5.h5")
 
 blink_count = 0
 
@@ -822,8 +823,8 @@ def predict_blink(left_eye, right_eye):
 
 # Directories
 data_dirs = {
-    'closed': 'blinknet_data/val/closed',
-    'open': 'blinknet_data/val/open'
+    'closed': 'blink_dataset/train/closed',
+    'open': 'blink_dataset/train/open'
 }
 
 # Counters

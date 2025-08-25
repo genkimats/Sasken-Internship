@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt   # <-- added for plotting
 from keras.models import load_model, Model
 from keras.layers import Dropout
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
 
 
 class AdaptiveLR(tf.keras.callbacks.Callback):
@@ -66,21 +66,21 @@ class StopOnValAcc(tf.keras.callbacks.Callback):
 
 # train_dir = './blinknet_data_set/dataset/'  # path where blink and non_blink folders are
 
-datagen = ImageDataGenerator(validation_split=0.2)
+datagen = ImageDataGenerator(validation_split=0.15)
 
 train_generator = datagen.flow_from_directory(
-    './blinknet_data/train/',   # <-- put all images here
+    './blink_dataset/train/',   # <-- put all images here
     target_size=(30, 30),
-    batch_size=32,
+    batch_size=128,
     subset='training',
     shuffle=True,
     class_mode='categorical'
 )
 
 val_generator = datagen.flow_from_directory(
-    './blinknet_data/train/',   # <-- same directory
+    './blink_dataset/train/',   # <-- same directory
     target_size=(30, 30),
-    batch_size=32,
+    batch_size=128,
     subset='validation',
     shuffle=True,
     class_mode='categorical'
@@ -142,6 +142,14 @@ adaptive_lr = AdaptiveLR(
     verbose=1
 )
 
+lr_scheduler = tf.keras.callbacks.ReduceLROnPlateau( 
+    monitor='val_loss', 
+    factor=0.5, 
+    patience=3, 
+    min_lr=1e-6, 
+    verbose=1 
+)
+
 checkpoint = ModelCheckpoint(
     filepath="./blinknet_models/blink_model_best.h5",
     monitor="val_accuracy",
@@ -156,8 +164,8 @@ stop_on_val_acc = StopOnValAcc(target_acc=1.0)
 history = model.fit(
     train_generator,
     validation_data=val_generator,
-    epochs=50,
-    callbacks=[adaptive_lr, stop_on_val_acc, checkpoint]
+    epochs=5,
+    callbacks=[lr_scheduler, stop_on_val_acc, checkpoint]
 )
 
 model.summary()
@@ -175,6 +183,7 @@ axs[0].plot(history.history['val_loss'], label='Validation Loss')
 axs[0].set_title('Model Loss')
 axs[0].set_xlabel('Epoch')
 axs[0].set_ylabel('Loss')
+axs[0].set_ylim(bottom=0)
 axs[0].legend()
 axs[0].grid(True)
 
@@ -184,6 +193,8 @@ axs[1].plot(history.history['val_accuracy'], label='Validation Accuracy')
 axs[1].set_title('Model Accuracy')
 axs[1].set_xlabel('Epoch')
 axs[1].set_ylabel('Accuracy')
+axs[1].set_ylim(0, 1)
+axs[1].set_yticks(np.arange(0, 1.01, 0.1))
 axs[1].legend()
 axs[1].grid(True)
 
