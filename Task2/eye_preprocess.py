@@ -33,6 +33,7 @@ def clear_directory(directory_path):
         except Exception as e:
             print(f"Failed to delete {file_path}. Reason: {e}")
 
+#region Functions
 
 def parse_landmarks(landmarks):
     """
@@ -707,7 +708,7 @@ def limit_bboxes(bboxes_batch, images_shapes, limit_landmarks=True):
     return bboxes_batch_fitted
                         
 # ================= PNet =====================
-def run_pnet(img, threshold=0.6, min_face_size=20, scale_factor=0.709):
+def run_pnet(img, threshold=0.6, min_face_size=20, scale_factor=0.5773):
     is_batch = isinstance(img, list)
     img = img if is_batch else [img]
     images_raw = load_images_batch(img)
@@ -828,8 +829,10 @@ def predict_blink(left_eye, right_eye):
         # Eye open
         return 0
 
+#endregion
 
-target_dir = "blinknet_data"
+input_dir = "blink_dataset"
+output_dir = "blink_dataset_pnet"
 data_type = "train"
 
 # Load trained CNN model
@@ -837,8 +840,8 @@ model = load_model('blinknet_models/blink_model_trained.h5')
 
 # Directories
 data_dirs = {
-    'closed': f"raw_{target_dir}/{data_type}/closed",
-    'open': f'raw_{target_dir}/{data_type}/open'
+    'closed': f"raw_{input_dir}/{data_type}/closed",
+    'open': f'raw_{input_dir}/{data_type}/open'
 }
 
 # Counters
@@ -851,7 +854,7 @@ class_correct = {"closed": 0, "open": 0}
 
 threshold = [0.2, 0.5, 0.7]
 
-clear_directory(f"{target_dir}/{data_type}")
+clear_directory(f"{output_dir}/{data_type}")
 
 for label, dir_path in data_dirs.items():
     for filename in os.listdir(dir_path):
@@ -869,21 +872,23 @@ for label, dir_path in data_dirs.items():
 
         result = to_json(bboxes_batch, images_count=len(img), output_as_width_height="xywh", input_as_width_height=False)
         result = result[0] if (not True and len(result) > 0) else result
-        
-        x1 = result[0][0]['box'][0] 
-        y1 = result[0][0]['box'][1] 
-        width = result[0][0]['box'][2] + 10
-        height = result[0][0]['box'][3] + 20
-        
-        left_eye_top_x = result[0][0]['keypoints']['left_eye'][0] - 30
-        left_eye_top_y = result[0][0]['keypoints']['left_eye'][1] - 30
-        left_eye_bottom_x = result[0][0]['keypoints']['left_eye'][0] + 30
-        left_eye_bottom_y = result[0][0]['keypoints']['left_eye'][1] + 30
-        
-        right_eye_top_x = result[0][0]['keypoints']['right_eye'][0] - 30
-        right_eye_top_y = result[0][0]['keypoints']['right_eye'][1] - 30
-        right_eye_bottom_x = result[0][0]['keypoints']['right_eye'][0] + 30
-        right_eye_bottom_y = result[0][0]['keypoints']['right_eye'][1] + 30
+        try:
+            x1 = result[0][0]['box'][0] 
+            y1 = result[0][0]['box'][1] 
+            width = result[0][0]['box'][2] + 10
+            height = result[0][0]['box'][3] + 20
+            
+            left_eye_top_x = result[0][0]['keypoints']['left_eye'][0] - 30
+            left_eye_top_y = result[0][0]['keypoints']['left_eye'][1] - 30
+            left_eye_bottom_x = result[0][0]['keypoints']['left_eye'][0] + 30
+            left_eye_bottom_y = result[0][0]['keypoints']['left_eye'][1] + 30
+            
+            right_eye_top_x = result[0][0]['keypoints']['right_eye'][0] - 30
+            right_eye_top_y = result[0][0]['keypoints']['right_eye'][1] - 30
+            right_eye_bottom_x = result[0][0]['keypoints']['right_eye'][0] + 30
+            right_eye_bottom_y = result[0][0]['keypoints']['right_eye'][1] + 30
+        except:
+            continue
         
         # Save the frame as an image with a specific path
         name_only = os.path.splitext(filename)[0]
@@ -891,11 +896,11 @@ for label, dir_path in data_dirs.items():
         preprocessed_left_eye = preprocess(frame[int(left_eye_top_y):int(left_eye_bottom_y), int(left_eye_top_x):int(left_eye_bottom_x)])
         preprocessed_right_eye = preprocess(frame[int(right_eye_top_y):int(right_eye_bottom_y), int(right_eye_top_x):int(right_eye_bottom_x)])
         
-        left_output_path = f"{target_dir}/{data_type}/{label}/{name_only}_left.jpg"
+        left_output_path = f"{output_dir}/{data_type}/{label}/{name_only}_left.jpg"
         os.makedirs(os.path.dirname(left_output_path), exist_ok=True)
         cv2.imwrite(left_output_path, preprocessed_left_eye)
         
-        right_output_path = f"{target_dir}/{data_type}/{label}/{name_only}_right.jpg"
+        right_output_path = f"{output_dir}/{data_type}/{label}/{name_only}_right.jpg"
         os.makedirs(os.path.dirname(right_output_path), exist_ok=True)
         cv2.imwrite(right_output_path, preprocessed_right_eye)
         

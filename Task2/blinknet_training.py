@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt   # <-- added for plotting
 from keras.models import load_model, Model
 from keras.layers import Dropout
+from keras.callbacks import ModelCheckpoint
+
 
 class AdaptiveLR(tf.keras.callbacks.Callback):
     def __init__(self, monitor='val_loss', factor_up=1.1, factor_down=0.5, patience=3, min_lr=1e-6, max_lr=1e-3, verbose=1):
@@ -140,6 +142,14 @@ adaptive_lr = AdaptiveLR(
     verbose=1
 )
 
+checkpoint = ModelCheckpoint(
+    filepath="./blinknet_models/blink_model_best.h5",
+    monitor="val_accuracy",
+    save_best_only=True,
+    mode="max",
+    verbose=1
+)
+
 stop_on_val_acc = StopOnValAcc(target_acc=1.0)
 
 # Train only unfrozen layers
@@ -147,7 +157,7 @@ history = model.fit(
     train_generator,
     validation_data=val_generator,
     epochs=50,
-    # callbacks=[adaptive_lr, stop_on_val_acc]
+    callbacks=[adaptive_lr, stop_on_val_acc, checkpoint]
 )
 
 model.summary()
